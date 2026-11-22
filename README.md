@@ -9,15 +9,12 @@ Every entity instance is its own Rivet Actor, with its own SQLite database for i
 
 ## Why Rivet
 
-- **No hash ring.** Effect's SQL backend hashes every entity id to one of 300 shards. Each runner computes the same hash ring and holds its shards with Postgres advisory locks. On Rivet, each entity is an actor that the gateway finds by its id, so there are no shards to assign, lock, or hand off during a deploy.
-- **No single database to outgrow.** With the SQL backend, every message, reply, and workflow step from every runner goes through one Postgres primary, so its connections and write throughput cap the cluster. On Rivet, each entity writes to its own SQLite, so storage throughput grows with the number of entities.
-- **Scales horizontally.** Add nodes and Rivet places new and waking actors on them. Nothing is rebalanced, and parallelism is not capped by a fixed shard count.
-- **On-time scheduling, no polling.** The SQL backend finds delayed and unclaimed messages by polling Postgres every 10 seconds, so a `DeliverAt` message can run up to 10 seconds late. On Rivet, `DeliverAt` wakes the actor with a schedule at the requested time.
-- **Idle entities cost nothing.** Idle actors sleep and wake on their next message or schedule. You can have millions of entities (one per user, document, or order) without keeping them in memory.
-- **Per-entity SQLite.** `ActorSqlClient` gives each entity its own SQL database, which commits in the same transaction as its mailbox. You don't have to design, index, or migrate shared tables.
-- **Cheaper long-term storage.** Rivet actor storage is about 10x cheaper than Postgres for long-term storage, so workflow history and entity state can grow without growing a database.
-- **Nothing to operate.** There is no Postgres to provision, no connection pools to size, and no shared message tables to clean up. Destroying a workflow's actor deletes its history.
-- **Managed hosting.** [Rivet Cloud](https://rivet.dev) runs your Effect cluster for you. You can also self-host the open-source Rivet Engine.
+- **Scales horizontally:** no hash ring, no shard locks, no single database to outgrow.
+- **Own SQLite per entity:** state and mailbox commit together, through `ActorSqlClient`.
+- **Idle entities sleep:** millions of entities cost nothing until they get a message.
+- **On-time timers:** `DeliverAt` and workflow clocks fire on schedule, with no polling.
+- **Cheap storage:** about 10x cheaper than Postgres for long-term state and history.
+- **Nothing to operate:** run on [Rivet Cloud](https://rivet.dev) or self-host the open-source Rivet Engine.
 
 ## Quickstart
 
