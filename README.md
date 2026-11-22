@@ -31,12 +31,11 @@ npm install @rivet-dev/effect-cluster effect@~4.1.4 rivetkit@next tsx
 
 ### 2. Define an entity
 
-Define entities with Effect Cluster as usual. Each entity instance runs as its own Rivet Actor, and `ActorSqlClient` gives it its own SQLite database.
+Define entities with Effect Cluster as usual. Each entity instance runs as its own Rivet Actor.
 
 ```ts
 // src/counter.ts
-import { ActorSqlClient } from "@rivet-dev/effect-cluster";
-import { Effect, Schema } from "effect";
+import { Effect, Ref, Schema } from "effect";
 import { ClusterSchema, Entity } from "effect/cluster";
 import { Rpc } from "effect/rpc";
 
@@ -48,6 +47,25 @@ export const Counter = Entity.make("Counter", [
 		success: Schema.Number,
 	}).annotate(ClusterSchema.Persisted, true),
 ]);
+
+export const CounterLive = Counter.toLayer(
+	Effect.gen(function* () {
+		// In-memory state: lost when the entity sleeps.
+		const count = yield* Ref.make(0);
+		return Counter.of({
+			Increment: () => Ref.updateAndGet(count, (n) => n + 1),
+		});
+	}),
+);
+```
+
+### 3. Add a SQLite database (optional)
+
+To keep state across sleeps, deploys, and crashes, give the entity its own SQLite database with `ActorSqlClient`. Its writes commit in the same storage as the entity's mailbox. Replace `CounterLive`:
+
+```ts
+// src/counter.ts
+import { ActorSqlClient } from "@rivet-dev/effect-cluster";
 
 export const CounterLive = Counter.toLayer(
 	Effect.gen(function* () {
@@ -69,7 +87,7 @@ export const CounterLive = Counter.toLayer(
 );
 ```
 
-### 3. Run it locally
+### 4. Run it locally
 
 `RivetCluster.serve` hosts the entities on this process. In development, RivetKit starts a local Rivet Engine for you.
 
@@ -103,7 +121,7 @@ npx tsx src/main.ts
 
 It prints `1`, `1`, `2`: the second `Increment` repeats the primary key `a`, so it returns the stored reply instead of running again. The local engine keeps its data between runs, so running the program again prints the same stored replies.
 
-### 4. Add a server
+### 5. Add a server
 
 To deploy, run the entities in a long-lived server next to your HTTP API. With `startEngine: false`, it connects to the engine of the cluster it is deployed to instead of starting a local one.
 
@@ -168,7 +186,7 @@ node_modules
 .env*
 ```
 
-### 5. Deploy to Rivet Cloud
+### 6. Deploy to Rivet Cloud
 
 Create a cluster in the [Rivet dashboard](https://dashboard.rivet.dev), then deploy with the [Rivet CLI](https://rivet.dev/docs/cli/) (Docker must be running):
 
