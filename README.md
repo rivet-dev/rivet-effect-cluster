@@ -103,11 +103,9 @@ npx tsx src/main.ts
 
 It prints `1`, `1`, `2`: the second `Increment` repeats the primary key `a`, so it returns the stored reply instead of running again. The local engine keeps its data between runs, so running the program again prints the same stored replies.
 
-### 4. Deploy to Rivet Cloud
+### 4. Add a server
 
-On Rivet Cloud, your app runs as a long-lived server on a cluster's runner pool. The pool connects it to the cluster's engine and forwards its public URL to the app's HTTP server on `PORT`.
-
-Add a server that hosts the entities and serves your API:
+To deploy, run the entities in a long-lived server next to your HTTP API. With `startEngine: false`, it connects to the engine of the cluster it is deployed to instead of starting a local one.
 
 ```ts
 // src/server.ts
@@ -170,32 +168,16 @@ node_modules
 .env*
 ```
 
-Create a cluster in the [Rivet dashboard](https://dashboard.rivet.dev), then sign in and deploy with the [Rivet CLI](https://rivet.dev/docs/cli/). Docker must be running; the CLI builds the image, uploads it, and rolls it out:
+### 5. Deploy to Rivet Cloud
+
+Create a cluster in the [Rivet dashboard](https://dashboard.rivet.dev), then deploy with the [Rivet CLI](https://rivet.dev/docs/cli/) (Docker must be running):
 
 ```sh
 npx @rivetkit/cli login
 npx @rivetkit/cli deploy --cluster <cluster> --org <org>
 ```
 
-The deploy prints the pool's public URL. Call it:
-
-```sh
-curl "https://<pool-url>/?op=a"
-```
-
-The runner pool sets `RIVET_ENDPOINT`, `RIVET_TOKEN`, `PORT`, and `RIVETKIT_METRICS_PORT` for you; `serve` reads them. To call entities from another backend, use `RivetCluster.layer` with the cluster's API endpoint and a token for it. Keep the token on the server:
-
-```ts
-const ClientLive = RivetCluster.layer({
-	entities: [Counter],
-	client: {
-		endpoint: process.env.RIVET_ENDPOINT, // the cluster's API endpoint, not the pool URL
-		token: process.env.RIVET_TOKEN,
-	},
-});
-```
-
-See [Rivet Cloud](https://rivet.dev/docs/deploy/cloud/) for clusters, environment variables, secrets, and rollbacks.
+The deploy prints your app's public URL. See the [Rivet Cloud docs](https://rivet.dev/docs/deploy/cloud/) for environment variables, secrets, rollbacks, and calling your entities from other backends with `RivetCluster.layer`.
 
 ### Self-hosting
 
