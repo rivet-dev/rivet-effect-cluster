@@ -87,43 +87,9 @@ export const CounterLive = Counter.toLayer(
 );
 ```
 
-### 4. Run it locally
+### 4. Add a server
 
-`RivetCluster.serve` hosts the entities on this process. In development, RivetKit starts a local Rivet Engine for you.
-
-```ts
-// src/main.ts
-import { RivetCluster } from "@rivet-dev/effect-cluster";
-import { Effect } from "effect";
-import { Counter, CounterLive } from "./counter.ts";
-
-const program = Effect.gen(function* () {
-	const counter = (yield* Counter.client)("counter-1");
-	console.log(yield* counter.Increment({ op: "a" }));
-	console.log(yield* counter.Increment({ op: "a" })); // same op: not applied twice
-	console.log(yield* counter.Increment({ op: "b" }));
-});
-
-const ClusterLive = RivetCluster.serve(CounterLive, { entities: [Counter] });
-
-Effect.runPromise(program.pipe(Effect.provide(ClusterLive))).then(
-	() => process.exit(0),
-	(error) => {
-		console.error(error);
-		process.exit(1);
-	},
-);
-```
-
-```sh
-npx tsx src/main.ts
-```
-
-It prints `1`, `1`, `2`: the second `Increment` repeats the primary key `a`, so it returns the stored reply instead of running again. The local engine keeps its data between runs, so running the program again prints the same stored replies.
-
-### 5. Add a server
-
-To deploy, run the entities in a long-lived server next to your HTTP API. When `RIVET_ENDPOINT` is set, as it is on Rivet Cloud, it connects to that engine instead of starting a local one.
+Host the entities in a server next to your HTTP API. Locally, RivetKit starts a development engine for you. When `RIVET_ENDPOINT` is set, as it is on Rivet Cloud, it connects to that engine instead.
 
 ```ts
 // src/server.ts
@@ -159,6 +125,23 @@ createServer((request, response) => {
 }).listen(Number(process.env.PORT ?? 8080));
 ```
 
+### 5. Run it locally
+
+```sh
+npx tsx src/server.ts
+```
+
+```sh
+curl "localhost:8080/?op=a"   # 1
+curl "localhost:8080/?op=a"   # 1: same op, so the stored reply is returned
+curl "localhost:8080/?op=b"   # 2
+```
+
+### 6. Deploy
+
+<details>
+<summary><b>Rivet Cloud</b></summary>
+
 Add a `Dockerfile` and a `.dockerignore`:
 
 ```dockerfile
@@ -178,11 +161,6 @@ node_modules
 *.tar
 .env*
 ```
-
-### 6. Deploy
-
-<details>
-<summary><b>Rivet Cloud</b></summary>
 
 Create a cluster in the [Rivet dashboard](https://dashboard.rivet.dev), then deploy with the [Rivet CLI](https://rivet.dev/docs/cli/) (Docker must be running):
 
