@@ -23,13 +23,6 @@ import { Account, AccountLive } from "./account.ts";
 
 const ClusterLayer = RivetCluster.serve(AccountLive, {
 	entities: [Account],
-	// Connect to the cluster's engine instead of starting a local one.
-	registry: {
-		use: {},
-		startEngine: false,
-		startServices: false,
-		runtime: "native",
-	},
 });
 
 const runtime = ManagedRuntime.make(ClusterLayer);

@@ -123,7 +123,7 @@ It prints `1`, `1`, `2`: the second `Increment` repeats the primary key `a`, so 
 
 ### 5. Add a server
 
-To deploy, run the entities in a long-lived server next to your HTTP API. With `startEngine: false`, it connects to the engine of the cluster it is deployed to instead of starting a local one.
+To deploy, run the entities in a long-lived server next to your HTTP API. When `RIVET_ENDPOINT` is set, as it is on Rivet Cloud, it connects to that engine instead of starting a local one.
 
 ```ts
 // src/server.ts
@@ -135,13 +135,6 @@ import { Counter, CounterLive } from "./counter.ts";
 const runtime = ManagedRuntime.make(
 	RivetCluster.serve(CounterLive, {
 		entities: [Counter],
-		// Connect to the cluster's engine instead of starting a local one.
-		registry: {
-			use: {},
-			startEngine: false,
-			startServices: false,
-			runtime: "native",
-		},
 	}),
 );
 await runtime.runPromise(Effect.void);
