@@ -69,9 +69,15 @@ jobs:
 
       - run: corepack enable
 
+      # Trusted publishing (OIDC) needs npm 11.5.1 or later.
+      - run: npm install -g npm@^11.5.1
+
       - name: Complete
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Only for the first publish, before trusted publishing can be
+          # configured on npm. Remove the secret once it is.
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"

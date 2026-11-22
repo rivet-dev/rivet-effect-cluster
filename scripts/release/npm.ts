@@ -1,4 +1,5 @@
 import * as fs from "node:fs/promises";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { $ } from "execa";
 import type { ReleaseOpts } from "./main";
@@ -58,7 +59,20 @@ export async function publishNpm(opts: ReleaseOpts) {
 			: opts.minorVersionChannel;
 
 	console.log(`==> Building ${pkg.name}`);
+	await $({ stdio: "inherit", cwd: opts.repoRoot })`rm -rf dist`;
 	await $({ stdio: "inherit", cwd: opts.repoRoot })`pnpm build`;
+
+	// pnpm pack applies publishConfig, so the tarball's exports point at dist.
+	// npm publishes it, because npm handles trusted publishing (OIDC).
+	const packDir = await fs.mkdtemp(join(tmpdir(), "effect-cluster-pack-"));
+	await $({
+		stdio: "inherit",
+		cwd: opts.repoRoot,
+	})`pnpm pack --pack-destination ${packDir}`;
+	const [tarball] = (await fs.readdir(packDir)).filter((file) =>
+		file.endsWith(".tgz"),
+	);
+	if (tarball === undefined) throw new Error("pnpm pack produced no tarball");
 
 	console.log(
 		`==> Publishing to NPM: ${pkg.name}@${opts.version} (tag ${tag})`,
@@ -67,7 +81,7 @@ export async function publishNpm(opts: ReleaseOpts) {
 		await $({
 			stdio: "inherit",
 			cwd: opts.repoRoot,
-		})`pnpm publish --access public --tag ${tag} --no-git-checks`;
+		})`npm publish ${join(packDir, tarball)} --access public --tag ${tag} --provenance`;
 		console.log(`✅ Published ${pkg.name}@${opts.version}`);
 	} catch (err: any) {
 		if (

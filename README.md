@@ -55,25 +55,32 @@ The same persisted ask on each backend:
 | Idle entities | In memory until `maxIdleTime` | Sleep after `maxIdleTime`, with no limit on count |
 | Storage | One shared database | One SQLite database per entity |
 
-## Installation
+## Quickstart
+
+### 1. Create a project
 
 ```sh
-npm install @rivet-dev/effect-cluster effect rivetkit
+mkdir my-cluster && cd my-cluster
+npm init -y
+npm pkg set type=module
+npm install @rivet-dev/effect-cluster effect@~4.1.4 rivetkit@next tsx
 ```
 
 `effect` and `rivetkit` are peer dependencies. This package requires `effect` 4.1 and `rivetkit` 3.1.2 or later.
 
-## Usage
+### 2. Define an entity
 
-Host your entities on a Rivet node with `RivetCluster.serve`:
+Define entities with Effect Cluster as usual. Each entity instance runs as its own Rivet Actor, and `ActorSqlClient` gives it its own SQLite database.
 
 ```ts
-import { ActorSqlClient, RivetCluster } from "@rivet-dev/effect-cluster";
-import { Effect, Layer, Schema } from "effect";
+// src/counter.ts
+import { ActorSqlClient } from "@rivet-dev/effect-cluster";
+import { Effect, Schema } from "effect";
 import { ClusterSchema, Entity } from "effect/cluster";
 import { Rpc } from "effect/rpc";
 
 export const Counter = Entity.make("Counter", [
+	// A persisted request with a primary key runs at most once per key.
 	Rpc.make("Increment", {
 		payload: { op: Schema.String },
 		primaryKey: ({ op }) => op,
@@ -81,9 +88,8 @@ export const Counter = Entity.make("Counter", [
 	}).annotate(ClusterSchema.Persisted, true),
 ]);
 
-const CounterLive = Counter.toLayer(
+export const CounterLive = Counter.toLayer(
 	Effect.gen(function* () {
-		// Each counter has its own SQLite database.
 		const sql = yield* ActorSqlClient.orDie;
 		yield* sql`CREATE TABLE IF NOT EXISTS counter (id INTEGER PRIMARY KEY, value INTEGER NOT NULL)`.pipe(
 			Effect.orDie,
@@ -100,26 +106,143 @@ const CounterLive = Counter.toLayer(
 		});
 	}),
 );
-
-const ClusterLive = RivetCluster.serve(CounterLive, {
-	entities: [Counter],
-});
-
-Layer.launch(ClusterLive).pipe(Effect.runFork);
 ```
 
-Call entities from any process, such as an API server, with `RivetCluster.layer`:
+### 3. Run it locally
+
+`RivetCluster.serve` hosts the entities on this process. In development, RivetKit starts a local Rivet Engine for you.
 
 ```ts
-const ClientLive = RivetCluster.layer({ entities: [Counter] });
+// src/main.ts
+import { RivetCluster } from "@rivet-dev/effect-cluster";
+import { Effect } from "effect";
+import { Counter, CounterLive } from "./counter.ts";
 
 const program = Effect.gen(function* () {
 	const counter = (yield* Counter.client)("counter-1");
-	return yield* counter.Increment({ op: "request-1" });
-}).pipe(Effect.provide(ClientLive));
+	console.log(yield* counter.Increment({ op: "a" }));
+	console.log(yield* counter.Increment({ op: "a" })); // same op: not applied twice
+	console.log(yield* counter.Increment({ op: "b" }));
+});
+
+const ClusterLive = RivetCluster.serve(CounterLive, { entities: [Counter] });
+
+Effect.runPromise(program.pipe(Effect.provide(ClusterLive))).then(
+	() => process.exit(0),
+	(error) => {
+		console.error(error);
+		process.exit(1);
+	},
+);
 ```
 
-Both layers also provide `WorkflowEngine` and `PersistedQueueFactory`, so `effect/workflow` workflows and `PersistedQueue` run on Rivet Actors too. The RivetKit client and registry read `RIVET_ENDPOINT` and the other standard RivetKit settings; pass `client` and `registry` to override them.
+```sh
+npx tsx src/main.ts
+```
+
+It prints `1`, `1`, `2`: the second `Increment` repeats the primary key `a`, so it returns the stored reply instead of running again. The local engine keeps its data between runs, so running the program again prints the same stored replies.
+
+### 4. Deploy to Rivet Cloud
+
+On Rivet Cloud, your app runs as a long-lived server on a cluster's runner pool. The pool connects it to the cluster's engine and forwards its public URL to the app's HTTP server on `PORT`.
+
+Add a server that hosts the entities and serves your API:
+
+```ts
+// src/server.ts
+import { createServer } from "node:http";
+import { RivetCluster } from "@rivet-dev/effect-cluster";
+import { Effect, ManagedRuntime } from "effect";
+import { Counter, CounterLive } from "./counter.ts";
+
+const runtime = ManagedRuntime.make(
+	RivetCluster.serve(CounterLive, {
+		entities: [Counter],
+		// Connect to the cluster's engine instead of starting a local one.
+		registry: {
+			use: {},
+			startEngine: false,
+			startServices: false,
+			runtime: "native",
+		},
+	}),
+);
+await runtime.runPromise(Effect.void);
+
+createServer((request, response) => {
+	const url = new URL(request.url ?? "/", "http://localhost");
+	const op = url.searchParams.get("op") ?? crypto.randomUUID();
+	runtime
+		.runPromise(
+			Effect.gen(function* () {
+				const counter = (yield* Counter.client)("counter-1");
+				return yield* counter.Increment({ op });
+			}),
+		)
+		.then(
+			(value) => response.end(String(value)),
+			(error) => {
+				console.error(error);
+				response.writeHead(500).end();
+			},
+		);
+}).listen(Number(process.env.PORT ?? 8080));
+```
+
+Add a `Dockerfile` and a `.dockerignore`:
+
+```dockerfile
+FROM node:22-bookworm-slim
+WORKDIR /app
+COPY package.json package-lock.json ./
+RUN npm ci --omit=dev --no-audit --no-fund \
+	&& rm -rf node_modules/@rivet-dev/agentos-* node_modules/@rivet-dev/agent-os-* node_modules/@agentos-software node_modules/@rivetkit/engine-cli-* \
+	&& npm cache clean --force
+COPY . .
+ENV NODE_ENV=production
+CMD ["node", "--import", "tsx", "src/server.ts"]
+```
+
+```
+node_modules
+*.tar
+.env*
+```
+
+Create a cluster in the [Rivet dashboard](https://dashboard.rivet.dev), then sign in and deploy with the [Rivet CLI](https://rivet.dev/docs/cli/). Docker must be running; the CLI builds the image, uploads it, and rolls it out:
+
+```sh
+npx @rivetkit/cli login
+npx @rivetkit/cli deploy --cluster <cluster> --org <org>
+```
+
+The deploy prints the pool's public URL. Call it:
+
+```sh
+curl "https://<pool-url>/?op=a"
+```
+
+The runner pool sets `RIVET_ENDPOINT`, `RIVET_TOKEN`, `PORT`, and `RIVETKIT_METRICS_PORT` for you; `serve` reads them. To call entities from another backend, use `RivetCluster.layer` with the cluster's API endpoint and a token for it. Keep the token on the server:
+
+```ts
+const ClientLive = RivetCluster.layer({
+	entities: [Counter],
+	client: {
+		endpoint: process.env.RIVET_ENDPOINT, // the cluster's API endpoint, not the pool URL
+		token: process.env.RIVET_TOKEN,
+	},
+});
+```
+
+See [Rivet Cloud](https://rivet.dev/docs/deploy/cloud/) for clusters, environment variables, secrets, and rollbacks.
+
+### Self-hosting
+
+To run on your own infrastructure, [self-host the Rivet Engine](https://rivet.dev/docs/deploy/self-host/control-plane/), then run `src/server.ts` (or the Docker image) with `RIVET_ENDPOINT` and `RIVET_TOKEN` set to your engine.
+
+### Workflows and queues
+
+Both `RivetCluster.serve` and `RivetCluster.layer` also provide `WorkflowEngine` and `PersistedQueueFactory`, so `effect/workflow` workflows, `DurableQueue`, and `PersistedQueue` run on Rivet Actors too. See the [examples](./examples).
 
 ## Examples
 
