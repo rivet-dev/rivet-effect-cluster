@@ -87,7 +87,7 @@ export const CounterLive = Counter.toLayer(
 );
 ```
 
-### 4. Add a server
+### 4. Start a server
 
 Host the entities in a server next to your HTTP API. Locally, RivetKit starts a development engine for you. When `RIVET_ENDPOINT` is set, as it is on Rivet Cloud, it connects to that engine instead.
 
@@ -125,7 +125,7 @@ createServer((request, response) => {
 }).listen(Number(process.env.PORT ?? 8080));
 ```
 
-### 5. Run it locally
+Run it and call it:
 
 ```sh
 npx tsx src/server.ts
@@ -137,7 +137,7 @@ curl "localhost:8080/?op=a"   # 1: same op, so the stored reply is returned
 curl "localhost:8080/?op=b"   # 2
 ```
 
-### 6. Deploy
+### 5. Deploy
 
 <details>
 <summary><b>Rivet Cloud</b></summary>
