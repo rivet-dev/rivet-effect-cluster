@@ -1390,6 +1390,26 @@ export interface ServeOptions extends Options {
 	readonly registry?: RegistryConfigInput<any> | undefined;
 }
 
+/**
+ * Points the cluster's client at the engine the registry uses, unless the
+ * client names its own endpoint. This covers the local engine RivetKit starts
+ * in development and an endpoint set only on the registry.
+ */
+const defaultClientToRegistry = (
+	client: ClientConfigInput | undefined,
+	registryConfig: RegistryConfigInput<any>,
+): ClientConfigInput | undefined => {
+	if (client?.endpoint !== undefined) return client;
+	const resolved = setup({ ...registryConfig, use: {} }).parseConfig();
+	if (resolved.endpoint === undefined) return client;
+	return {
+		...client,
+		endpoint: resolved.endpoint,
+		namespace: client?.namespace ?? resolved.namespace,
+		token: client?.token ?? resolved.token,
+	};
+};
+
 const entityActorDefinitions = (
 	runtime: ClusterRuntime,
 ): Record<string, AnyActorDefinition> => {
@@ -1428,12 +1448,20 @@ export const serve = <E, R>(
 ): Layer.Layer<ClusterServices, E, Exclude<R, ClusterServices>> =>
 	Layer.effectContext(
 		Effect.gen(function* () {
-			const clusterContext = yield* make(options);
-			const runtime = Context.get(clusterContext, RivetClusterRuntime);
-			yield* Layer.build(
-				Layer.provide(handlers, Layer.succeedContext(clusterContext)),
-			);
 			const registryConfig = options.registry ?? { use: {} };
+			const clusterContext = yield* make({
+				...options,
+				client: defaultClientToRegistry(options.client, registryConfig),
+			});
+			const runtime = Context.get(clusterContext, RivetClusterRuntime);
+			// Handlers live in their own scope so that shutdown can stop them,
+			// such as queue workers and their pending takes, before the node
+			// drains.
+			const handlersScope = yield* Scope.fork(yield* Effect.scope);
+			yield* Layer.buildWithScope(
+				Layer.provide(handlers, Layer.succeedContext(clusterContext)),
+				handlersScope,
+			);
 			const actors = entityActorDefinitions(runtime);
 			for (const workflowName of runtime.workflows.names()) {
 				actors[workflowActorName(workflowName)] = makeWorkflowActor(
@@ -1483,6 +1511,16 @@ export const serve = <E, R>(
 			});
 			runtime.markReady();
 			rivetRegistry.start();
+			// Closing the layer stops the handlers, then drains this node: its
+			// actors stop and RivetKit stops any local engine and dev services
+			// it started.
+			yield* Effect.addFinalizer((exit) =>
+				Scope.close(handlersScope, exit).pipe(
+					Effect.andThen(
+						Effect.promise(() => rivetRegistry.shutdown()),
+					),
+				),
+			);
 			// Every node wakes every singleton it registers. A wake is
 			// idempotent, so this both starts singletons on the first deploy and
 			// restarts any whose wake chain was lost.

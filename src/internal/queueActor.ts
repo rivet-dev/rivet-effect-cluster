@@ -52,7 +52,8 @@ interface Waiter {
 	readonly takerId: string;
 	readonly maxAttempts: number;
 	readonly leaseMillis: number;
-	resolve: (item: QueueItem) => void;
+	/** Settles the waiting take: an item, or null once it is cancelled or replaced. */
+	resolve: (item: QueueItem | null) => void;
 }
 
 interface QueueRuntime {
@@ -85,7 +86,11 @@ interface QueueRuntime {
 	readonly runTimer: () => Promise<void>;
 }
 
-const makeQueueRuntime = (sql: ActorSql, timer: ActorTimer): QueueRuntime => {
+const makeQueueRuntime = (
+	sql: ActorSql,
+	timer: ActorTimer,
+	abortSignal: AbortSignal,
+): QueueRuntime => {
 	// Leasing reads and then writes rows and the waiter list, so every
 	// operation runs under one permit.
 	const entry = Semaphore.makeUnsafe(1);
@@ -124,8 +129,8 @@ const makeQueueRuntime = (sql: ActorSql, timer: ActorTimer): QueueRuntime => {
 		maxAttempts: number,
 		leaseMillis: number,
 	): Promise<QueueItem | null> => {
-		let resolveItem: (item: QueueItem) => void = () => undefined;
-		const pending = new Promise<QueueItem>((resolve) => {
+		let resolveItem: (item: QueueItem | null) => void = () => undefined;
+		const pending = new Promise<QueueItem | null>((resolve) => {
 			resolveItem = resolve;
 		});
 		const leased = await run(
@@ -148,6 +153,8 @@ const makeQueueRuntime = (sql: ActorSql, timer: ActorTimer): QueueRuntime => {
 						resolve: resolveItem,
 					});
 				} else {
+					// A retried take replaces the earlier one, which returns nothing.
+					existing.resolve(null);
 					existing.resolve = resolveItem;
 				}
 				yield* wakeWaiters;
@@ -156,12 +163,20 @@ const makeQueueRuntime = (sql: ActorSql, timer: ActorTimer): QueueRuntime => {
 		);
 		if (leased !== undefined) return leased;
 
+		// Stop waiting after the bounded wait, or as soon as the actor starts
+		// shutting down so the take does not hold up its shutdown.
 		let waitTimer: ReturnType<typeof setTimeout> | undefined;
+		let onAbort: (() => void) | undefined;
 		const timedOut = new Promise<"timeout">((resolve) => {
 			waitTimer = setTimeout(() => resolve("timeout"), takeWaitMillis);
+			onAbort = () => resolve("timeout");
+			if (abortSignal.aborted) onAbort();
+			else abortSignal.addEventListener("abort", onAbort, { once: true });
 		});
 		const outcome = await Promise.race([pending, timedOut]);
 		clearTimeout(waitTimer);
+		if (onAbort !== undefined)
+			abortSignal.removeEventListener("abort", onAbort);
 		if (outcome !== "timeout") return outcome;
 		// Stop waiting. A waiter that was resolved in the meantime still hands
 		// its item back, because the lease now belongs to this taker.
@@ -202,7 +217,9 @@ const makeQueueRuntime = (sql: ActorSql, timer: ActorTimer): QueueRuntime => {
 						(waiter) => waiter.takerId === takerId,
 					);
 					if (index >= 0) {
-						waiters.splice(index, 1);
+						const [waiter] = waiters.splice(index, 1);
+						// The cancelled take returns nothing instead of waiting.
+						waiter?.resolve(null);
 						return;
 					}
 					// The cancel can race the delivery; release an item already
@@ -252,6 +269,7 @@ interface QueueContext {
 	readonly schedule: TimerSchedule;
 	readonly cron: TimerCron;
 	readonly vars: QueueVars;
+	readonly abortSignal: AbortSignal;
 }
 
 const getRuntime = (c: { readonly vars: QueueVars }): QueueRuntime => {
@@ -282,7 +300,11 @@ export const makeQueueActor = (options: {
 				cron: c.cron,
 				heartbeatMillis: options.heartbeatMillis,
 			});
-			c.vars.runtime = makeQueueRuntime(makeActorSql(c.db), timer);
+			c.vars.runtime = makeQueueRuntime(
+				makeActorSql(c.db),
+				timer,
+				c.abortSignal,
+			);
 		},
 		actions: {
 			offer: (

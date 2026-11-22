@@ -137,6 +137,7 @@ const begin = (db: RawAccess, connection: RoutedConnection) =>
 					};
 					resume(Effect.void);
 				}),
+			{ name: "effect_cluster.entity_sql" },
 		);
 		transaction.then(
 			() => settled.resolve(),

@@ -126,6 +126,10 @@ const program = Effect.gen(function* () {
 
 Both layers also provide `WorkflowEngine` and `PersistedQueueFactory`, so `effect/workflow` workflows and `PersistedQueue` run on Rivet Actors too. The RivetKit client and registry read `RIVET_ENDPOINT` and the other standard RivetKit settings; pass `client` and `registry` to override them.
 
+## Examples
+
+Runnable examples for entities, entity SQLite, workflows, durable queues, cron, and singletons are in [`examples/`](./examples).
+
 ## Options
 
 | Option | Default | Description |

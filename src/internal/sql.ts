@@ -67,21 +67,24 @@ export const makeActorSql = (db: RawAccess): ActorSql => {
 				Effect.flatten(
 					Effect.promise(async (): Promise<Exit.Exit<A, E>> => {
 						try {
-							return await db.transaction(async (tx) => {
-								const exit = await Effect.runPromiseExit(
-									effect.pipe(
-										Effect.provideService(
-											CurrentTransaction,
-											tx,
+							return await db.transaction(
+								async (tx) => {
+									const exit = await Effect.runPromiseExit(
+										effect.pipe(
+											Effect.provideService(
+												CurrentTransaction,
+												tx,
+											),
+											Effect.provideContext(context),
 										),
-										Effect.provideContext(context),
-									),
-								);
-								// Throwing makes RivetKit roll the transaction back.
-								if (Exit.isFailure(exit))
-									throw new Rollback(exit);
-								return exit;
-							});
+									);
+									// Throwing makes RivetKit roll the transaction back.
+									if (Exit.isFailure(exit))
+										throw new Rollback(exit);
+									return exit;
+								},
+								{ name: "effect_cluster.storage" },
+							);
 						} catch (error) {
 							if (error instanceof Rollback) {
 								return error.exit as Exit.Exit<A, E>;
