@@ -180,6 +180,10 @@ The deploy prints your app's public URL. See the [Rivet Cloud docs](https://rive
 
 </details>
 
+## Examples
+
+Runnable examples for entities, entity SQLite, workflows, durable queues, cron, and singletons are in [`examples/`](./examples). Workflows and queues need no extra layers: `RivetCluster.serve` and `RivetCluster.layer` already provide the `WorkflowEngine` and `PersistedQueueFactory`.
+
 ## How it works
 
 Every entity is its own Rivet Actor, keyed by the entity id, with its own SQLite database for its mailbox and state. Workflow executions and durable queues work the same way. A call goes straight to the entity's actor, and Rivet places actors across your nodes and sleeps them when idle.
@@ -205,10 +209,6 @@ Effect's default backend splits entities into 300 shards on a hash ring across r
 | Scaling | Rebalance shards; all writes go to one database | Add machines |
 | `DeliverAt` | Found by a 10 s poll | Fires on time |
 | Idle entities | In memory until `maxIdleTime` | Sleep and cost nothing |
-
-## Examples
-
-Runnable examples for entities, entity SQLite, workflows, durable queues, cron, and singletons are in [`examples/`](./examples). Workflows and queues need no extra layers: `RivetCluster.serve` and `RivetCluster.layer` already provide the `WorkflowEngine` and `PersistedQueueFactory`.
 
 ## Options
 
