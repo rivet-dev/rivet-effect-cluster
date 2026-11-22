@@ -59,7 +59,7 @@ export const CounterLive = Counter.toLayer(
 );
 ```
 
-### 3. Add a SQLite database (optional)
+### 3. Add a durable SQLite database per entity (optional)
 
 To keep state across sleeps, deploys, and crashes, give the entity its own SQLite database with `ActorSqlClient`. Its writes commit in the same storage as the entity's mailbox. Replace `CounterLive`:
 
