@@ -186,7 +186,10 @@ node_modules
 .env*
 ```
 
-### 6. Deploy to Rivet Cloud
+### 6. Deploy
+
+<details>
+<summary><b>Rivet Cloud</b></summary>
 
 Create a cluster in the [Rivet dashboard](https://dashboard.rivet.dev), then deploy with the [Rivet CLI](https://rivet.dev/docs/cli/) (Docker must be running):
 
@@ -197,9 +200,14 @@ npx @rivetkit/cli deploy --cluster <cluster> --org <org>
 
 The deploy prints your app's public URL. See the [Rivet Cloud docs](https://rivet.dev/docs/deploy/cloud/) for environment variables, secrets, rollbacks, and calling your entities from other backends with `RivetCluster.layer`.
 
-### Self-hosting
+</details>
 
-To run on your own infrastructure, [self-host the Rivet Engine](https://rivet.dev/docs/deploy/self-host/control-plane/), then run `src/server.ts` (or the Docker image) with `RIVET_ENDPOINT` and `RIVET_TOKEN` set to your engine.
+<details>
+<summary><b>Self-host</b></summary>
+
+[Self-host the Rivet Engine](https://rivet.dev/docs/deploy/self-host/control-plane/), then run `src/server.ts` (or the Docker image) with `RIVET_ENDPOINT` and `RIVET_TOKEN` set to your engine.
+
+</details>
 
 ## How it works
 
