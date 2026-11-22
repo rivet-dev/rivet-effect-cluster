@@ -1,7 +1,7 @@
 # Examples
 
 > [!WARNING]
-> `@rivetkit/effect-cluster` is **experimental**. Do not use it in production.
+> **Experimental. Use at your own risk.** If you choose to adopt it, we recommend forking this repository and patching issues yourself.
 
 Each example is a single file that hosts its entities and workflows with `RivetCluster.serve`, runs a short program against them, and exits.
 

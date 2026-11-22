@@ -1,12 +1,7 @@
 # @rivetkit/effect-cluster
 
 > [!WARNING]
-> **Experimental. Do not use in production.**
->
-> - It has not been tested against real node crashes, deploy drains, or production load.
-> - APIs, actor names, and the on-disk storage layout can change in any release, without a migration path. Data written by one version may not be readable by the next.
-> - It builds on Effect's unstable cluster APIs, so new Effect releases can break it.
-> - There is no support or compatibility guarantee. Pin an exact version if you try it.
+> **Experimental. Use at your own risk.** If you choose to adopt it, we recommend forking this repository and patching issues yourself.
 
 Run [Effect Cluster](https://effect.website) entities, workflows, persisted queues, and singletons on Rivet Actors. Your Effect code stays the same; only the layer that provides `Sharding` changes.
 
@@ -140,9 +135,7 @@ Runnable examples for entities, entity SQLite, workflows, durable queues, cron, 
 | `keepAliveHeartbeat` | 30 s | How often a busy entity re-arms its recovery schedule; bounds how long it stays down after its node is lost |
 | `actionTimeout` | 15 min | Upper bound of one entity action, and so of one ask |
 
-## Status and known limitations
-
-This package is **experimental**. Known gaps before it can be considered stable:
+## Known limitations
 
 - **Failure recovery is unproven.** Recovery after a node crash or a deploy drain is implemented but has only been tested with nodes in a single process.
 - **Performance is unmeasured.** Every call goes through the Rivet gateway, and a persisted ask costs two to three durable writes. There are no benchmarks against the SQL backend yet.
