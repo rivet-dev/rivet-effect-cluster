@@ -185,39 +185,29 @@ To run on your own infrastructure, [self-host the Rivet Engine](https://rivet.de
 
 ## How it works
 
-![One Rivet Actor per entity](https://github.com/user-attachments/assets/4cf7233c-09f7-446f-b172-833f8b57c3b0)
+Every entity is its own Rivet Actor, keyed by the entity id, with its own SQLite database for its mailbox and state. Workflow executions and durable queues work the same way. A call goes straight to the entity's actor, and Rivet places actors across your nodes and sleeps them when idle.
 
-| Effect Cluster | Rivet Actor |
-| --- | --- |
-| Entity instance | One actor named after the entity type, keyed by the entity id |
-| Workflow execution | One `Workflow/<name>` actor per execution id |
-| Persisted queue | One `effect.queue` actor per queue name |
-| Singleton and `ClusterCron` | One `effect.singleton` actor per singleton |
-| `DeliverAt`, durable clocks | Actor schedules, with a recurring heartbeat that replays missed work |
-| `maxIdleTime` | The actor's sleep timeout |
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="RIVET_DARK">
+  <img alt="Your Effect app calls the Order entity's actor, which stores the request and reply in its own SQLite. Workflow executions and durable queues are actors too." src="RIVET_LIGHT">
+</picture>
 
-A persisted ask is one action through the gateway. The actor stores the request, runs the handler, and stores the reply in its own SQLite before it responds:
+### Compared with Postgres
 
-![A persisted ask on Rivet](https://github.com/user-attachments/assets/185886ed-f982-412d-9a01-4e7eb37e0883)
+Effect's default backend splits entities into 300 shards on a hash ring across runners, and every message, reply, and lock goes through one shared Postgres database.
 
-## Compared with the SQL backend
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="PG_DARK">
+  <img alt="Effect's default backend: the caller inserts the request into Postgres and sends it to the runner that owns the shard, which claims the row and writes the reply to Postgres." src="PG_LIGHT">
+</picture>
 
-Effect's SQL backend coordinates a fleet of runners through one Postgres database:
-
-![Effect SQL backend on Postgres](https://github.com/user-attachments/assets/df90e4dd-2776-412d-bcaf-30bf33c1afeb)
-
-The same persisted ask on each backend:
-
-![The persisted ask on Postgres and on Rivet](https://github.com/user-attachments/assets/15293c63-da48-4e03-ae82-c32fe4b485e8)
-
-| | SQL backend (Postgres) | Rivet |
+| | Postgres backend | Rivet |
 | --- | --- | --- |
-| Placement | Shard (300 per group) on a runner | Actor per entity |
-| Ownership | Advisory locks and a hash ring each runner computes | Rivet runs one instance per key |
-| You operate | Postgres 14+, a lock session per runner | Nothing on Rivet Cloud; the Rivet Engine if self-hosted |
-| `DeliverAt` precision | About 10 s (poll interval) | Milliseconds (actor schedule) |
-| Idle entities | In memory until `maxIdleTime` | Sleep after `maxIdleTime`, with no limit on count |
-| Storage | One shared database | One SQLite database per entity |
+| Placement | A shard on a runner | An actor per entity |
+| Storage | One shared database | SQLite per entity |
+| Scaling | Rebalance shards; all writes go to one database | Add machines |
+| `DeliverAt` | Found by a 10 s poll | Fires on time |
+| Idle entities | In memory until `maxIdleTime` | Sleep and cost nothing |
 
 ## Examples
 
@@ -235,13 +225,9 @@ Runnable examples for entities, entity SQLite, workflows, durable queues, cron, 
 
 ## Known limitations
 
-- **Failure recovery is unproven.** Recovery after a node crash or a deploy drain is implemented but has only been tested with nodes in a single process.
-- **Performance is unmeasured.** Every call goes through the Rivet gateway, and a persisted ask costs two to three durable writes. There are no benchmarks against the SQL backend yet.
-- **Entity actions are reachable with a namespace token.** Anyone holding a token for the namespace can call an entity's actor directly, bypassing your application's authorization.
 - **Long asks are bounded.** An ask waits inside one actor action, so an ask that runs longer than `actionTimeout` (default 15 minutes) fails.
 - **Some APIs are missing.** `Sharding.getSnowflake`, `PersistedQueue` cleanup, and the `WithTransaction` annotation are not supported.
 - **Naming is fixed.** Entity type names must fit Rivet's 64-byte actor name limit, and renaming an entity type leaves its existing data behind under the old name.
-- **Registry-wide limits.** `serve` raises RivetKit's message size limits to about 2 MB for every actor in the registry.
 
 Bug reports and feedback are welcome in [GitHub issues](https://github.com/rivet-dev/rivet-effect-cluster/issues).
 
