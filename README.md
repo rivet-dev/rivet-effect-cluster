@@ -183,10 +183,6 @@ The deploy prints your app's public URL. See the [Rivet Cloud docs](https://rive
 
 To run on your own infrastructure, [self-host the Rivet Engine](https://rivet.dev/docs/deploy/self-host/control-plane/), then run `src/server.ts` (or the Docker image) with `RIVET_ENDPOINT` and `RIVET_TOKEN` set to your engine.
 
-### Workflows and queues
-
-Both `RivetCluster.serve` and `RivetCluster.layer` also provide `WorkflowEngine` and `PersistedQueueFactory`, so `effect/workflow` workflows, `DurableQueue`, and `PersistedQueue` run on Rivet Actors too. See the [examples](./examples).
-
 ## How it works
 
 ![One Rivet Actor per entity](https://github.com/user-attachments/assets/4cf7233c-09f7-446f-b172-833f8b57c3b0)
@@ -225,7 +221,7 @@ The same persisted ask on each backend:
 
 ## Examples
 
-Runnable examples for entities, entity SQLite, workflows, durable queues, cron, and singletons are in [`examples/`](./examples).
+Runnable examples for entities, entity SQLite, workflows, durable queues, cron, and singletons are in [`examples/`](./examples). Workflows and queues need no extra layers: `RivetCluster.serve` and `RivetCluster.layer` already provide the `WorkflowEngine` and `PersistedQueueFactory`.
 
 ## Options
 
