@@ -188,8 +188,8 @@ To run on your own infrastructure, [self-host the Rivet Engine](https://rivet.de
 Every entity is its own Rivet Actor, keyed by the entity id, with its own SQLite database for its mailbox and state. Workflow executions and durable queues work the same way. A call goes straight to the entity's actor, and Rivet places actors across your nodes and sleeps them when idle.
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="RIVET_DARK">
-  <img alt="Your Effect app calls the Order entity's actor, which stores the request and reply in its own SQLite. Workflow executions and durable queues are actors too." src="RIVET_LIGHT">
+  <source media="(prefers-color-scheme: dark)" srcset="https://github.com/user-attachments/assets/bc89812f-8570-47fe-b021-79bfea05d4e1">
+  <img alt="Your Effect app calls the Order entity's actor, which stores the request and reply in its own SQLite. Workflow executions and durable queues are actors too." src="https://github.com/user-attachments/assets/be35f34b-d1a9-4f62-a4b1-c39c9e0c4d75">
 </picture>
 
 ### Compared with Postgres
@@ -197,8 +197,8 @@ Every entity is its own Rivet Actor, keyed by the entity id, with its own SQLite
 Effect's default backend splits entities into 300 shards on a hash ring across runners, and every message, reply, and lock goes through one shared Postgres database.
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="PG_DARK">
-  <img alt="Effect's default backend: the caller inserts the request into Postgres and sends it to the runner that owns the shard, which claims the row and writes the reply to Postgres." src="PG_LIGHT">
+  <source media="(prefers-color-scheme: dark)" srcset="https://github.com/user-attachments/assets/612ac91b-e7a5-4285-a743-cabe7e987221">
+  <img alt="Effect's default backend: the caller inserts the request into Postgres and sends it to the runner that owns the shard, which claims the row and writes the reply to Postgres." src="https://github.com/user-attachments/assets/192b9632-69a7-4a4d-848a-ae5e19b9ad71">
 </picture>
 
 | | Postgres backend | Rivet |
