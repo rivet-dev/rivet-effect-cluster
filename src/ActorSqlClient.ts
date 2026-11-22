@@ -24,7 +24,7 @@ import type * as SqlClient from "effect/sql/SqlClient";
 export class ActorSqlClient extends Context.Service<
 	ActorSqlClient,
 	SqlClient.SqlClient
->()("@rivetkit/effect-cluster/ActorSqlClient") {
+>()("@rivet-dev/effect-cluster/ActorSqlClient") {
 	/**
 	 * Reads the client without adding a requirement. Dies when no entity actor
 	 * provides it, for example in a test that did not provide one.

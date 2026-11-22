@@ -14,7 +14,7 @@ import * as Effect from "effect/Effect";
 export class CurrentEntityName extends Context.Service<
 	CurrentEntityName,
 	string
->()("@rivetkit/effect-cluster/CurrentEntityName") {}
+>()("@rivet-dev/effect-cluster/CurrentEntityName") {}
 
 /**
  * Completes the delayed asks made by one entity actor's handlers. The
@@ -66,4 +66,4 @@ export const makeReplyRegistry = (): EntityReplyRegistry => {
 export class CurrentReplyRegistry extends Context.Service<
 	CurrentReplyRegistry,
 	EntityReplyRegistry
->()("@rivetkit/effect-cluster/CurrentReplyRegistry") {}
+>()("@rivet-dev/effect-cluster/CurrentReplyRegistry") {}

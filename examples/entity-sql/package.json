@@ -1,0 +1,21 @@
+{
+	"name": "example-entity-sql",
+	"private": true,
+	"type": "module",
+	"scripts": {
+		"start": "tsx src/main.ts",
+		"check-types": "tsc --noEmit",
+		"server": "tsx src/server.ts",
+		"call": "tsx src/call.ts"
+	},
+	"dependencies": {
+		"@rivet-dev/effect-cluster": "workspace:*",
+		"effect": "4.1.4",
+		"rivetkit": "3.1.2-rc.6",
+		"tsx": "^4.20.0"
+	},
+	"devDependencies": {
+		"@types/node": "^22.18.1",
+		"typescript": "^5.9.2"
+	}
+}

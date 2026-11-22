@@ -21,7 +21,7 @@
 				"namespaceImportPackages": [
 					"effect",
 					"@effect/*",
-					"@rivetkit/effect-cluster"
+					"@rivet-dev/effect-cluster"
 				]
 			}
 		]

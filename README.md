@@ -1,4 +1,4 @@
-# @rivetkit/effect-cluster
+# @rivet-dev/effect-cluster
 
 > [!WARNING]
 > **Experimental. Use at your own risk.** If you choose to adopt it, we recommend forking this repository and patching issues yourself.
@@ -58,7 +58,7 @@ The same persisted ask on each backend:
 ## Installation
 
 ```sh
-npm install @rivetkit/effect-cluster effect rivetkit
+npm install @rivet-dev/effect-cluster effect rivetkit
 ```
 
 `effect` and `rivetkit` are peer dependencies. This package requires `effect` 4.1 and `rivetkit` 3.1.2 or later.
@@ -68,7 +68,7 @@ npm install @rivetkit/effect-cluster effect rivetkit
 Host your entities on a Rivet node with `RivetCluster.serve`:
 
 ```ts
-import { ActorSqlClient, RivetCluster } from "@rivetkit/effect-cluster";
+import { ActorSqlClient, RivetCluster } from "@rivet-dev/effect-cluster";
 import { Effect, Layer, Schema } from "effect";
 import { ClusterSchema, Entity } from "effect/cluster";
 import { Rpc } from "effect/rpc";

@@ -8,7 +8,7 @@
  *
  * Run with `pnpm example:workflows`.
  */
-import { RivetCluster } from "@rivetkit/effect-cluster";
+import { RivetCluster } from "@rivet-dev/effect-cluster";
 import { Effect, Layer, Option, Schedule, Schema } from "effect";
 import {
 	Activity,

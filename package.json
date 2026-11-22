@@ -1,5 +1,5 @@
 {
-	"name": "@rivetkit/effect-cluster",
+	"name": "@rivet-dev/effect-cluster",
 	"version": "0.1.0",
 	"description": "Experimental Effect Cluster backend for Rivet Actors",
 	"license": "Apache-2.0",
@@ -33,10 +33,10 @@
 		"check-types": "tsc --noEmit && tsc --noEmit -p tsconfig.examples.json && tsc --noEmit -p scripts/release",
 		"lint": "biome check .",
 		"release": "tsx ./scripts/release/main.ts",
-		"example:entities": "tsx examples/entities.ts",
-		"example:entity-sql": "tsx examples/entity-sql.ts",
-		"example:workflows": "tsx examples/workflows.ts",
-		"example:queue-and-cron": "tsx examples/queue-and-cron.ts"
+		"example:entities": "pnpm --filter example-entities start",
+		"example:entity-sql": "pnpm --filter example-entity-sql start",
+		"example:workflows": "pnpm --filter example-workflows start",
+		"example:queue-and-cron": "pnpm --filter example-queue-and-cron start"
 	},
 	"peerDependencies": {
 		"effect": "~4.1.4",

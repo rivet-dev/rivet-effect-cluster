@@ -41,21 +41,21 @@ export interface EntitySql {
 }
 
 const InUserTransaction = Context.Reference<boolean>(
-	"@rivetkit/effect-cluster/internal/entitySql/InUserTransaction",
+	"@rivet-dev/effect-cluster/internal/entitySql/InUserTransaction",
 	{ defaultValue: () => false },
 );
 
 // Set while a fiber holds the gate for mailbox work, so nested mailbox
 // statements inside a mailbox transaction do not wait on themselves.
 const InMailboxGate = Context.Reference<boolean>(
-	"@rivetkit/effect-cluster/internal/entitySql/InMailboxGate",
+	"@rivet-dev/effect-cluster/internal/entitySql/InMailboxGate",
 	{ defaultValue: () => false },
 );
 
 const TransactionConnection = Context.Service<
 	Client.TransactionConnection,
 	Client.TransactionConnection.Service
->("@rivetkit/effect-cluster/internal/entitySql/TransactionConnection");
+>("@rivet-dev/effect-cluster/internal/entitySql/TransactionConnection");
 
 const sqlError = (cause: unknown, message: string, operation: string) =>
 	new SqlError({

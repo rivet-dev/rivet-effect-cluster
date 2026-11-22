@@ -100,4 +100,4 @@ export interface WorkflowExecutionHandle extends WorkflowStub {
 export class CurrentExecutionHandle extends Context.Service<
 	CurrentExecutionHandle,
 	WorkflowExecutionHandle
->()("@rivetkit/effect-cluster/RivetWorkflowEngine/CurrentExecutionHandle") {}
+>()("@rivet-dev/effect-cluster/RivetWorkflowEngine/CurrentExecutionHandle") {}

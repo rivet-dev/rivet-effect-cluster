@@ -10,7 +10,7 @@
  *
  * Run with `pnpm example:queue-and-cron`.
  */
-import { RivetCluster } from "@rivetkit/effect-cluster";
+import { RivetCluster } from "@rivet-dev/effect-cluster";
 import { Cron, DateTime, Effect, Layer, Schema } from "effect";
 import { ClusterCron, Singleton } from "effect/cluster";
 import { DurableQueue, Workflow } from "effect/workflow";

@@ -219,7 +219,7 @@ async function main() {
 	// Setup commander
 	program
 		.name("release")
-		.description("Release a new version of @rivetkit/effect-cluster")
+		.description("Release a new version of @rivet-dev/effect-cluster")
 		.option("--major", "Bump major version")
 		.option("--minor", "Bump minor version")
 		.option("--patch", "Bump patch version")

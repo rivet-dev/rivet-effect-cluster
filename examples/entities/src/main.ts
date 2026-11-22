@@ -7,7 +7,7 @@
  *
  * Run with `pnpm example:entities`.
  */
-import { RivetCluster } from "@rivetkit/effect-cluster";
+import { RivetCluster } from "@rivet-dev/effect-cluster";
 import { Effect, Layer, Ref, Schema } from "effect";
 import { ClusterSchema, Entity } from "effect/cluster";
 import { Rpc } from "effect/rpc";

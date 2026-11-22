@@ -37,7 +37,7 @@ export interface ActorSql {
 }
 
 const CurrentTransaction = Context.Reference<RawAccess | undefined>(
-	"@rivetkit/effect-cluster/internal/sql/CurrentTransaction",
+	"@rivet-dev/effect-cluster/internal/sql/CurrentTransaction",
 	{ defaultValue: () => undefined },
 );
 

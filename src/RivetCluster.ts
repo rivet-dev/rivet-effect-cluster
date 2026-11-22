@@ -13,6 +13,7 @@
  *
  * @since 0.1.0
  */
+import { createServer, type Server } from "node:http";
 import * as Cause from "effect/Cause";
 import { Clock } from "effect/Clock";
 import * as Context from "effect/Context";
@@ -208,7 +209,7 @@ interface ClientTargetValue {
 }
 
 class ClientTarget extends Context.Service<ClientTarget, ClientTargetValue>()(
-	"@rivetkit/effect-cluster/RivetCluster/ClientTarget",
+	"@rivet-dev/effect-cluster/RivetCluster/ClientTarget",
 ) {}
 
 const uuidV7 = (timestamp: number): string => {
@@ -286,7 +287,7 @@ interface ClusterRuntime {
 class RivetClusterRuntime extends Context.Service<
 	RivetClusterRuntime,
 	ClusterRuntime
->()("@rivetkit/effect-cluster/RivetCluster/Runtime") {}
+>()("@rivet-dev/effect-cluster/RivetCluster/Runtime") {}
 
 const makeWorkflowStub = (handle: ActionHandle): WorkflowStub => {
 	const call = (name: string, args: Array<unknown>) =>
@@ -1388,7 +1389,49 @@ export interface ServeOptions extends Options {
 	 * any other actors the node hosts beside the entity actors.
 	 */
 	readonly registry?: RegistryConfigInput<any> | undefined;
+	/**
+	 * Port of a Prometheus metrics server on `127.0.0.1` that answers
+	 * `GET /metrics` with the node's RivetKit metrics. Defaults to the
+	 * `RIVETKIT_METRICS_PORT` environment variable, which Rivet Cloud runner
+	 * pools set; without either, no metrics server runs.
+	 */
+	readonly metricsPort?: number | undefined;
 }
+
+/** Serves the registry's Prometheus metrics on `127.0.0.1` until the scope closes. */
+const serveMetrics = (
+	registry: { readonly routes: { prometheusMetrics(): Promise<Response> } },
+	port: number,
+) =>
+	Effect.acquireRelease(
+		Effect.callback<Server, Error>((resume) => {
+			const server = createServer((request, response) => {
+				if (request.method !== "GET" || request.url !== "/metrics") {
+					response.writeHead(404).end();
+					return;
+				}
+				registry.routes.prometheusMetrics().then(
+					async (metrics) => {
+						response.writeHead(metrics.status, {
+							"content-type":
+								metrics.headers.get("content-type") ??
+								"text/plain",
+						});
+						response.end(await metrics.text());
+					},
+					() => response.writeHead(500).end(),
+				);
+			});
+			server.once("error", (error) => resume(Effect.fail(error)));
+			server.listen(port, "127.0.0.1", () =>
+				resume(Effect.succeed(server)),
+			);
+		}),
+		(server) =>
+			Effect.callback<void>((resume) => {
+				server.close(() => resume(Effect.void));
+			}),
+	).pipe(Effect.orDie);
 
 /**
  * Points the cluster's client at the engine the registry uses, unless the
@@ -1511,6 +1554,14 @@ export const serve = <E, R>(
 			});
 			runtime.markReady();
 			rivetRegistry.start();
+			const metricsPort =
+				options.metricsPort ??
+				(process.env.RIVETKIT_METRICS_PORT
+					? Number(process.env.RIVETKIT_METRICS_PORT)
+					: undefined);
+			if (metricsPort !== undefined) {
+				yield* serveMetrics(rivetRegistry, metricsPort);
+			}
 			// Closing the layer stops the handlers, then drains this node: its
 			// actors stop and RivetKit stops any local engine and dev services
 			// it started.
