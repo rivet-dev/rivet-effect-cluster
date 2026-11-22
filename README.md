@@ -19,42 +19,6 @@ Every entity instance is its own Rivet Actor, with its own SQLite database for i
 - **Nothing to operate.** There is no Postgres to provision, no connection pools to size, and no shared message tables to clean up. Destroying a workflow's actor deletes its history.
 - **Managed hosting.** [Rivet Cloud](https://rivet.dev) runs your Effect cluster for you. You can also self-host the open-source Rivet Engine.
 
-## How it works
-
-![One Rivet Actor per entity](https://github.com/user-attachments/assets/4cf7233c-09f7-446f-b172-833f8b57c3b0)
-
-| Effect Cluster | Rivet Actor |
-| --- | --- |
-| Entity instance | One actor named after the entity type, keyed by the entity id |
-| Workflow execution | One `Workflow/<name>` actor per execution id |
-| Persisted queue | One `effect.queue` actor per queue name |
-| Singleton and `ClusterCron` | One `effect.singleton` actor per singleton |
-| `DeliverAt`, durable clocks | Actor schedules, with a recurring heartbeat that replays missed work |
-| `maxIdleTime` | The actor's sleep timeout |
-
-A persisted ask is one action through the gateway. The actor stores the request, runs the handler, and stores the reply in its own SQLite before it responds:
-
-![A persisted ask on Rivet](https://github.com/user-attachments/assets/185886ed-f982-412d-9a01-4e7eb37e0883)
-
-## Compared with the SQL backend
-
-Effect's SQL backend coordinates a fleet of runners through one Postgres database:
-
-![Effect SQL backend on Postgres](https://github.com/user-attachments/assets/df90e4dd-2776-412d-bcaf-30bf33c1afeb)
-
-The same persisted ask on each backend:
-
-![The persisted ask on Postgres and on Rivet](https://github.com/user-attachments/assets/15293c63-da48-4e03-ae82-c32fe4b485e8)
-
-| | SQL backend (Postgres) | Rivet |
-| --- | --- | --- |
-| Placement | Shard (300 per group) on a runner | Actor per entity |
-| Ownership | Advisory locks and a hash ring each runner computes | Rivet runs one instance per key |
-| You operate | Postgres 14+, a lock session per runner | Nothing on Rivet Cloud; the Rivet Engine if self-hosted |
-| `DeliverAt` precision | About 10 s (poll interval) | Milliseconds (actor schedule) |
-| Idle entities | In memory until `maxIdleTime` | Sleep after `maxIdleTime`, with no limit on count |
-| Storage | One shared database | One SQLite database per entity |
-
 ## Quickstart
 
 ### 1. Create a project
@@ -243,6 +207,42 @@ To run on your own infrastructure, [self-host the Rivet Engine](https://rivet.de
 ### Workflows and queues
 
 Both `RivetCluster.serve` and `RivetCluster.layer` also provide `WorkflowEngine` and `PersistedQueueFactory`, so `effect/workflow` workflows, `DurableQueue`, and `PersistedQueue` run on Rivet Actors too. See the [examples](./examples).
+
+## How it works
+
+![One Rivet Actor per entity](https://github.com/user-attachments/assets/4cf7233c-09f7-446f-b172-833f8b57c3b0)
+
+| Effect Cluster | Rivet Actor |
+| --- | --- |
+| Entity instance | One actor named after the entity type, keyed by the entity id |
+| Workflow execution | One `Workflow/<name>` actor per execution id |
+| Persisted queue | One `effect.queue` actor per queue name |
+| Singleton and `ClusterCron` | One `effect.singleton` actor per singleton |
+| `DeliverAt`, durable clocks | Actor schedules, with a recurring heartbeat that replays missed work |
+| `maxIdleTime` | The actor's sleep timeout |
+
+A persisted ask is one action through the gateway. The actor stores the request, runs the handler, and stores the reply in its own SQLite before it responds:
+
+![A persisted ask on Rivet](https://github.com/user-attachments/assets/185886ed-f982-412d-9a01-4e7eb37e0883)
+
+## Compared with the SQL backend
+
+Effect's SQL backend coordinates a fleet of runners through one Postgres database:
+
+![Effect SQL backend on Postgres](https://github.com/user-attachments/assets/df90e4dd-2776-412d-bcaf-30bf33c1afeb)
+
+The same persisted ask on each backend:
+
+![The persisted ask on Postgres and on Rivet](https://github.com/user-attachments/assets/15293c63-da48-4e03-ae82-c32fe4b485e8)
+
+| | SQL backend (Postgres) | Rivet |
+| --- | --- | --- |
+| Placement | Shard (300 per group) on a runner | Actor per entity |
+| Ownership | Advisory locks and a hash ring each runner computes | Rivet runs one instance per key |
+| You operate | Postgres 14+, a lock session per runner | Nothing on Rivet Cloud; the Rivet Engine if self-hosted |
+| `DeliverAt` precision | About 10 s (poll interval) | Milliseconds (actor schedule) |
+| Idle entities | In memory until `maxIdleTime` | Sleep after `maxIdleTime`, with no limit on count |
+| Storage | One shared database | One SQLite database per entity |
 
 ## Examples
 
