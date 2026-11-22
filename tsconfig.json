@@ -1,0 +1,30 @@
+{
+	"compilerOptions": {
+		"target": "esnext",
+		"module": "esnext",
+		"strict": true,
+		"skipLibCheck": true,
+		"esModuleInterop": false,
+		"allowSyntheticDefaultImports": true,
+		"stripInternal": true,
+		"moduleResolution": "bundler",
+		"downlevelIteration": true,
+		"lib": ["ESNext"],
+		"types": ["node"],
+		"moduleDetection": "force",
+		"verbatimModuleSyntax": true,
+		"rewriteRelativeImportExtensions": true,
+		"noEmit": true,
+		"plugins": [
+			{
+				"name": "@effect/language-service",
+				"namespaceImportPackages": [
+					"effect",
+					"@effect/*",
+					"@rivetkit/effect-cluster"
+				]
+			}
+		]
+	},
+	"include": ["src/**/*.ts"]
+}

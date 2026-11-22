@@ -1,0 +1,87 @@
+name: release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version'
+        required: true
+        type: string
+      latest:
+        description: 'Latest'
+        required: true
+        type: boolean
+        default: true
+
+defaults:
+  run:
+    # Enable fail-fast behavior
+    shell: bash -e {0}
+
+jobs:
+  setup:
+    name: "Setup"
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - run: corepack enable
+
+      - name: Setup
+        run: |
+          pnpm install --frozen-lockfile
+
+          CMD="pnpm exec tsx ./scripts/release/main.ts --version \"${{ github.event.inputs.version }}\" --phase setup-ci"
+
+          if [ "${{ inputs.latest }}" != "true" ]; then
+            CMD="$CMD --no-latest"
+          fi
+
+          eval "$CMD"
+
+  complete:
+    name: "Complete"
+    needs: [setup]
+    runs-on: ubuntu-24.04
+    permissions:
+      # Allow the release script to create tags and GitHub releases.
+      contents: write
+      # Allow npm to exchange GitHub's short-lived OIDC token.
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          registry-url: "https://registry.npmjs.org"
+          package-manager-cache: false
+
+      - run: corepack enable
+
+      - name: Complete
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+          pnpm install --frozen-lockfile
+
+          CMD="pnpm exec tsx ./scripts/release/main.ts --version \"${{ github.event.inputs.version }}\" --phase complete-ci --no-validate-git"
+
+          if [ "${{ inputs.latest }}" != "true" ]; then
+            CMD="$CMD --no-latest"
+          fi
+
+          eval "$CMD"
